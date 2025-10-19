@@ -1,0 +1,351 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Juego Dino con Clave</title>
+  <style>
+    :root {
+      color-scheme: light dark;
+      font-family: "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      background-color: #f1f5f9;
+      color: #0f172a;
+    }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: linear-gradient(160deg, #f8fafc, #e2e8f0);
+    }
+
+    main {
+      width: min(90vw, 600px);
+      background: rgba(255, 255, 255, 0.85);
+      box-shadow: 0 20px 45px rgba(15, 23, 42, 0.15);
+      border-radius: 24px;
+      padding: 48px;
+      backdrop-filter: blur(6px);
+    }
+
+    h1 {
+      font-size: clamp(1.8rem, 2.8vw, 2.4rem);
+      margin-bottom: 12px;
+      color: #0f172a;
+      text-align: center;
+    }
+
+    p {
+      margin-top: 0;
+      margin-bottom: 32px;
+      line-height: 1.6;
+      color: #334155;
+      text-align: center;
+    }
+
+    .input-wrapper {
+      display: flex;
+      gap: 16px;
+      flex-wrap: wrap;
+      justify-content: center;
+      align-items: center;
+    }
+
+    label {
+      font-weight: 600;
+      color: #1e293b;
+    }
+
+    input[type="password"] {
+      flex: 1 1 220px;
+      padding: 12px 16px;
+      border-radius: 12px;
+      border: 1px solid #cbd5f5;
+      background: #f8fafc;
+      font-size: 1rem;
+      transition: border-color 0.2s, box-shadow 0.2s;
+    }
+
+    input[type="password"]:focus {
+      outline: none;
+      border-color: #3b82f6;
+      box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.25);
+    }
+
+    button {
+      padding: 12px 28px;
+      border-radius: 12px;
+      border: none;
+      background: linear-gradient(135deg, #3b82f6, #2563eb);
+      color: #fff;
+      font-weight: 600;
+      font-size: 1rem;
+      cursor: pointer;
+      transition: transform 0.2s ease, box-shadow 0.2s ease;
+    }
+
+    button:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 18px 25px rgba(37, 99, 235, 0.25);
+    }
+
+    .status {
+      min-height: 24px;
+      margin-top: 12px;
+      text-align: center;
+      font-weight: 600;
+      color: #ef4444;
+    }
+
+    .hidden {
+      display: none !important;
+    }
+
+    canvas {
+      display: block;
+      width: 100%;
+      max-width: 480px;
+      margin: 0 auto;
+      border-radius: 18px;
+      background: linear-gradient(#f1f5f9, #cbd5f5);
+      border: 2px solid #94a3b8;
+    }
+
+    .scoreboard {
+      text-align: center;
+      margin-top: 16px;
+      font-weight: 600;
+      color: #1e293b;
+      font-size: 1.1rem;
+    }
+
+    .instructions {
+      text-align: center;
+      margin-top: 12px;
+      color: #475569;
+      font-size: 0.95rem;
+    }
+  </style>
+</head>
+<body>
+  <main>
+    <section id="login-section">
+      <h1>Accede al juego</h1>
+      <p>Introduce la clave secreta para empezar a jugar al dinosaurio.</p>
+      <div class="input-wrapper">
+        <label for="password">Clave:</label>
+        <input id="password" type="password" autocomplete="off" />
+        <button id="access-btn" type="button">Entrar</button>
+      </div>
+      <div id="status" class="status"></div>
+    </section>
+
+    <section id="game-section" class="hidden">
+      <canvas id="game" width="600" height="200"></canvas>
+      <div class="scoreboard">
+        Puntuación: <span id="score">0</span>
+      </div>
+      <div class="instructions">
+        Pulsa <strong>Espacio</strong> o <strong>Flecha Arriba</strong> para saltar.
+      </div>
+    </section>
+  </main>
+
+  <script>
+    const SECRET = "dino-power";
+    const passwordInput = document.querySelector("#password");
+    const accessBtn = document.querySelector("#access-btn");
+    const status = document.querySelector("#status");
+    const loginSection = document.querySelector("#login-section");
+    const gameSection = document.querySelector("#game-section");
+
+    accessBtn.addEventListener("click", () => {
+      const input = passwordInput.value.trim();
+      if (input === SECRET) {
+        status.textContent = "Acceso concedido. ¡A jugar!";
+        status.style.color = "#16a34a";
+        setTimeout(() => {
+          loginSection.classList.add("hidden");
+          gameSection.classList.remove("hidden");
+          startGame();
+        }, 600);
+      } else {
+        status.textContent = "Clave incorrecta. Inténtalo de nuevo.";
+        status.style.color = "#ef4444";
+      }
+    });
+
+    passwordInput.addEventListener("keydown", (event) => {
+      if (event.key === "Enter") {
+        accessBtn.click();
+      }
+    });
+
+    function startGame() {
+      const canvas = document.querySelector("#game");
+      const ctx = canvas.getContext("2d");
+      const groundHeight = 20;
+      const dino = {
+        x: 60,
+        y: canvas.height - groundHeight - 48,
+        width: 44,
+        height: 48,
+        dy: 0,
+        gravity: 0.9,
+        jumpStrength: 16,
+        isJumping: false,
+      };
+
+      let obstacles = [];
+      let frame = 0;
+      let score = 0;
+      let speed = 6;
+      let animationId;
+      let gameOver = false;
+
+      const scoreLabel = document.querySelector("#score");
+
+      function resetGame() {
+        obstacles = [];
+        frame = 0;
+        score = 0;
+        speed = 6;
+        gameOver = false;
+        dino.y = canvas.height - groundHeight - dino.height;
+        dino.dy = 0;
+      }
+
+      function drawDino() {
+        ctx.fillStyle = "#0f172a";
+        ctx.beginPath();
+        ctx.roundRect(dino.x, dino.y, dino.width, dino.height, 8);
+        ctx.fill();
+        ctx.fillStyle = "#e2e8f0";
+        ctx.beginPath();
+        ctx.arc(dino.x + 32, dino.y + 14, 6, 0, Math.PI * 2);
+        ctx.fill();
+      }
+
+      function createObstacle() {
+        const height = Math.random() * 40 + 20;
+        obstacles.push({
+          x: canvas.width + 10,
+          y: canvas.height - groundHeight - height,
+          width: Math.random() > 0.5 ? 30 : 20,
+          height,
+        });
+      }
+
+      function drawObstacles() {
+        ctx.fillStyle = "#2563eb";
+        obstacles.forEach((obstacle) => {
+          ctx.beginPath();
+          ctx.roundRect(obstacle.x, obstacle.y, obstacle.width, obstacle.height, 6);
+          ctx.fill();
+        });
+      }
+
+      function updateObstacles() {
+        obstacles.forEach((obstacle) => {
+          obstacle.x -= speed;
+        });
+
+        obstacles = obstacles.filter((obstacle) => obstacle.x + obstacle.width > 0);
+
+        if (frame % Math.max(70 - speed * 4, 40) === 0) {
+          createObstacle();
+        }
+      }
+
+      function drawGround() {
+        ctx.fillStyle = "#94a3b8";
+        ctx.fillRect(0, canvas.height - groundHeight, canvas.width, groundHeight);
+        ctx.setLineDash([10, 12]);
+        ctx.strokeStyle = "rgba(15, 23, 42, 0.25)";
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.moveTo(0, canvas.height - groundHeight - 6);
+        ctx.lineTo(canvas.width, canvas.height - groundHeight - 6);
+        ctx.stroke();
+        ctx.setLineDash([]);
+      }
+
+      function applyPhysics() {
+        dino.dy += dino.gravity;
+        dino.y += dino.dy;
+
+        if (dino.y >= canvas.height - groundHeight - dino.height) {
+          dino.y = canvas.height - groundHeight - dino.height;
+          dino.dy = 0;
+          dino.isJumping = false;
+        }
+      }
+
+      function handleJump(event) {
+        if ((event.code === "Space" || event.code === "ArrowUp") && !dino.isJumping && !gameOver) {
+          dino.dy = -dino.jumpStrength;
+          dino.isJumping = true;
+        }
+      }
+
+      window.addEventListener("keydown", handleJump);
+
+      function detectCollision() {
+        return obstacles.some((obstacle) => {
+          return (
+            dino.x < obstacle.x + obstacle.width &&
+            dino.x + dino.width > obstacle.x &&
+            dino.y < obstacle.y + obstacle.height &&
+            dino.y + dino.height > obstacle.y
+          );
+        });
+      }
+
+      function updateScore() {
+        score += 0.5;
+        scoreLabel.textContent = Math.floor(score);
+        if (Math.floor(score) % 100 === 0) {
+          speed += 0.4;
+        }
+      }
+
+      function loop() {
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        drawGround();
+        drawDino();
+        updateObstacles();
+        drawObstacles();
+        applyPhysics();
+        updateScore();
+
+        if (detectCollision()) {
+          gameOver = true;
+          ctx.fillStyle = "rgba(15, 23, 42, 0.85)";
+          ctx.fillRect(0, 0, canvas.width, canvas.height);
+          ctx.fillStyle = "#f8fafc";
+          ctx.font = "28px 'Segoe UI', sans-serif";
+          ctx.textAlign = "center";
+          ctx.fillText("¡Has chocado! Pulsa Enter para reiniciar", canvas.width / 2, canvas.height / 2);
+          cancelAnimationFrame(animationId);
+          return;
+        }
+
+        frame++;
+        animationId = requestAnimationFrame(loop);
+      }
+
+      window.addEventListener("keydown", (event) => {
+        if (event.key === "Enter" && gameOver) {
+          resetGame();
+          animationId = requestAnimationFrame(loop);
+        }
+      });
+
+      resetGame();
+      animationId = requestAnimationFrame(loop);
+    }
+  </script>
+</body>
+</html>
