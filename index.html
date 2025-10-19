@@ -154,71 +154,32 @@
   </main>
 
   <script>
+    const SECRET = "dino-power";
     const passwordInput = document.querySelector("#password");
     const accessBtn = document.querySelector("#access-btn");
     const status = document.querySelector("#status");
     const loginSection = document.querySelector("#login-section");
     const gameSection = document.querySelector("#game-section");
 
-    async function verifyKey(key) {
-      const response = await fetch("/api/verify-key", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ key }),
-      });
-
-      const payload = await response.json().catch(() => ({}));
-      if (!response.ok) {
-        throw new Error(payload.message || "No se pudo validar la clave.");
-      }
-
-      return payload;
-    }
-
-    async function handleAccess() {
+    accessBtn.addEventListener("click", () => {
       const input = passwordInput.value.trim();
-      if (!input) {
-        status.textContent = "Introduce una clave para continuar.";
-        status.style.color = "#ef4444";
-        return;
-      }
-
-      accessBtn.disabled = true;
-      passwordInput.disabled = true;
-      status.textContent = "Verificando...";
-      status.style.color = "#2563eb";
-
-      let success = false;
-
-      try {
-        const result = await verifyKey(input);
-        success = true;
-        status.textContent = result.message || "Acceso concedido. ¡A jugar!";
+      if (input === SECRET) {
+        status.textContent = "Acceso concedido. ¡A jugar!";
         status.style.color = "#16a34a";
-
         setTimeout(() => {
           loginSection.classList.add("hidden");
           gameSection.classList.remove("hidden");
           startGame();
-        }, 500);
-      } catch (error) {
-        status.textContent = error.message;
+        }, 600);
+      } else {
+        status.textContent = "Clave incorrecta. Inténtalo de nuevo.";
         status.style.color = "#ef4444";
-      } finally {
-        if (!success) {
-          accessBtn.disabled = false;
-          passwordInput.disabled = false;
-          passwordInput.focus();
-          passwordInput.select();
-        }
       }
-    }
-
-    accessBtn.addEventListener("click", handleAccess);
+    });
 
     passwordInput.addEventListener("keydown", (event) => {
       if (event.key === "Enter") {
-        handleAccess();
+        accessBtn.click();
       }
     });
 
@@ -228,19 +189,19 @@
       const groundHeight = 20;
       const dino = {
         x: 60,
-        y: canvas.height - groundHeight - 52,
-        width: 48,
-        height: 52,
+        y: canvas.height - groundHeight - 48,
+        width: 44,
+        height: 48,
         dy: 0,
-        gravity: 0.8,
-        jumpStrength: 15,
+        gravity: 0.9,
+        jumpStrength: 16,
         isJumping: false,
       };
 
       let obstacles = [];
       let frame = 0;
       let score = 0;
-      let speed = 4;
+      let speed = 6;
       let animationId;
       let gameOver = false;
 
@@ -250,42 +211,20 @@
         obstacles = [];
         frame = 0;
         score = 0;
-        speed = 4;
+        speed = 6;
         gameOver = false;
         dino.y = canvas.height - groundHeight - dino.height;
         dino.dy = 0;
       }
 
       function drawDino() {
-        ctx.fillStyle = "#334155";
-
-        ctx.beginPath();
-        ctx.roundRect(dino.x, dino.y + 14, dino.width, dino.height - 14, 10);
-        ctx.fill();
-
-        ctx.beginPath();
-        ctx.roundRect(dino.x + dino.width - 26, dino.y - 16, 26, 26, 6);
-        ctx.fill();
-
-        ctx.beginPath();
-        ctx.moveTo(dino.x + 6, dino.y + dino.height - 12);
-        ctx.lineTo(dino.x - 16, dino.y + dino.height - 20);
-        ctx.lineTo(dino.x + 6, dino.y + dino.height - 2);
-        ctx.closePath();
-        ctx.fill();
-
-        ctx.fillStyle = "#1f2937";
-        ctx.fillRect(dino.x + 8, dino.y + dino.height - 16, 12, 16);
-        ctx.fillRect(dino.x + 28, dino.y + dino.height - 16, 12, 16);
-
-        ctx.fillStyle = "#f8fafc";
-        ctx.beginPath();
-        ctx.arc(dino.x + dino.width - 8, dino.y - 4, 4, 0, Math.PI * 2);
-        ctx.fill();
-
         ctx.fillStyle = "#0f172a";
         ctx.beginPath();
-        ctx.arc(dino.x + dino.width - 7, dino.y - 4, 2, 0, Math.PI * 2);
+        ctx.roundRect(dino.x, dino.y, dino.width, dino.height, 8);
+        ctx.fill();
+        ctx.fillStyle = "#e2e8f0";
+        ctx.beginPath();
+        ctx.arc(dino.x + 32, dino.y + 14, 6, 0, Math.PI * 2);
         ctx.fill();
       }
 
@@ -315,7 +254,7 @@
 
         obstacles = obstacles.filter((obstacle) => obstacle.x + obstacle.width > 0);
 
-        if (frame % Math.max(90 - speed * 5, 50) === 0) {
+        if (frame % Math.max(70 - speed * 4, 40) === 0) {
           createObstacle();
         }
       }
@@ -365,10 +304,10 @@
       }
 
       function updateScore() {
-        score += 0.35;
+        score += 0.5;
         scoreLabel.textContent = Math.floor(score);
-        if (Math.floor(score) % 120 === 0) {
-          speed += 0.35;
+        if (Math.floor(score) % 100 === 0) {
+          speed += 0.4;
         }
       }
 
